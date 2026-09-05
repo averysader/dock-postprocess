@@ -51,7 +51,7 @@ Conda is recommended because OpenMM, OpenFF, RDKit, AmberTools, and related
 scientific dependencies are most reliably managed through conda-forge.
 
 ~~~bash
-git clone <repository-url>
+git clone https://github.com/averysader/dock-postprocess.git
 cd dock-postprocess
 
 conda env create -f environment.yml
