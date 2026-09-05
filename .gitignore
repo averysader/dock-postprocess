@@ -1,0 +1,66 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+build/
+dist/
+
+# Editable/build metadata
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Jupyter
+.ipynb_checkpoints/
+
+# OS/editor
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+*~
+
+# dock-postprocess runtime files
+.dockpost/
+results/
+ligands/
+ligand_manifest.csv
+receptor.pdb
+
+# Temporary compatibility staging
+native_*_staging/
+*_staging/
+top*_openmm_minimized/
+
+# Large molecular simulation files
+*.dcd
+*.xtc
+*.trr
+*.nc
+*.netcdf
+*.chk
+*.rst
+*.rst7
+
+# Local validation snapshots
+release_candidate_*/
+src_*_validated_*/
+core_*_validated_*/
+
+# Historical development implementations and launchers
+core_legacy/
+bin/
+bin-dev/
+legacy/
+
+# Local development milestone records
+GENERALIZED_COMPAT_VALIDATED.txt
+NATIVE_LAYOUT_VALIDATED.txt
+
+# Development snapshots inside active core
+core/*_pre_*cleanup*.py
+
+# Superseded compatibility/development code
+src/dockpost/cli.py
+core/minimize_top_complexes.py
+core/sdf2clip.py

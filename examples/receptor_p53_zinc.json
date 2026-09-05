@@ -1,0 +1,93 @@
+{
+  "forcefield_xmls": [
+    "amber14/protein.ff14SB.xml",
+    "amber14/tip3p.xml"
+  ],
+
+  "backbone_restraint_schedule_kcal_mol_A2": [
+    100.0,
+    10.0,
+    1.0
+  ],
+
+  "residue_variants": [
+    {
+      "chain": "B",
+      "resid": "176",
+      "residue_name": "CYM",
+      "topology_load_name": "CYS"
+    },
+    {
+      "chain": "B",
+      "resid": "179",
+      "residue_name": "HIE"
+    },
+    {
+      "chain": "B",
+      "resid": "238",
+      "residue_name": "CYM",
+      "topology_load_name": "CYS"
+    },
+    {
+      "chain": "B",
+      "resid": "242",
+      "residue_name": "CYM",
+      "topology_load_name": "CYS"
+    }
+  ],
+
+  "metal_restraints": [
+    {
+      "metal": {
+        "resname": "ZN",
+        "atom": "ZN"
+      },
+      "partner": {
+        "chain": "B",
+        "resid": "176",
+        "atom": "SG"
+      },
+      "distance_A": null,
+      "force_constant_kcal_mol_A2": 1000.0
+    },
+    {
+      "metal": {
+        "resname": "ZN",
+        "atom": "ZN"
+      },
+      "partner": {
+        "chain": "B",
+        "resid": "179",
+        "atom": "ND1"
+      },
+      "distance_A": null,
+      "force_constant_kcal_mol_A2": 1000.0
+    },
+    {
+      "metal": {
+        "resname": "ZN",
+        "atom": "ZN"
+      },
+      "partner": {
+        "chain": "B",
+        "resid": "238",
+        "atom": "SG"
+      },
+      "distance_A": null,
+      "force_constant_kcal_mol_A2": 1000.0
+    },
+    {
+      "metal": {
+        "resname": "ZN",
+        "atom": "ZN"
+      },
+      "partner": {
+        "chain": "B",
+        "resid": "242",
+        "atom": "SG"
+      },
+      "distance_A": null,
+      "force_constant_kcal_mol_A2": 1000.0
+    }
+  ]
+}

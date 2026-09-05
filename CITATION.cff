@@ -1,0 +1,23 @@
+cff-version: 1.2.0
+message: "If you use dock-postprocess in your research, please cite the software."
+title: "dock-postprocess"
+type: software
+authors:
+  - family-names: "Sader"
+    given-names: "Avery"
+version: "0.1.0"
+date-released: "2026-09-05"
+license: MIT
+abstract: >-
+  An open-source structure-based drug design toolkit for standardized docking
+  pose import, OpenMM minimization, structural quality control, protein-ligand
+  interaction analysis, ligand conformational strain analysis, and integrated
+  design prioritization.
+keywords:
+  - computational chemistry
+  - molecular docking
+  - structure-based drug design
+  - OpenMM
+  - RDKit
+  - OpenFF
+  - cheminformatics

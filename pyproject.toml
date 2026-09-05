@@ -1,0 +1,50 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+
+[project]
+name = "dock-postprocess"
+version = "0.1.0"
+description = "Open-source structure-based docking postprocessing, minimization, interaction analysis, and ligand strain analysis."
+readme = "README.md"
+requires-python = ">=3.11"
+authors = [
+    {name = "Avery Sader"}
+]
+keywords = [
+    "computational chemistry",
+    "molecular docking",
+    "structure-based drug design",
+    "OpenMM",
+    "RDKit",
+    "OpenFF",
+    "cheminformatics"
+]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Science/Research",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.11",
+    "Topic :: Scientific/Engineering :: Chemistry",
+    "Topic :: Scientific/Engineering :: Bio-Informatics"
+]
+
+
+[project.scripts]
+dock-init = "dockpost.init:main"
+dock-minimize = "dockpost.minimize:main"
+dock-qc = "dockpost.qc:main"
+dock-enrich = "dockpost.enrich:main"
+dock-landscape = "dockpost.landscape:main"
+dock-strain = "dockpost.strain:main"
+dock-master = "dockpost.master:main"
+
+
+[tool.setuptools]
+package-dir = {"" = "src"}
+
+
+[tool.setuptools.packages.find]
+where = ["src"]
+include = ["dockpost*"]

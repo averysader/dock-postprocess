@@ -1,0 +1,34 @@
+dock-postprocess v0.1.0 release candidate
+
+Validated: 2026-09-05
+
+Scientific regression:
+- generalized workspace import validated
+- arbitrary SDF filenames validated
+- multi-record SDF support validated
+- coordinate-frame QC validated
+- native generalized OpenMM minimizer validated against legacy implementation
+- exact agreement in validation starting potential energy
+- generalized minimization validated for L0001-L0003
+- generalized post-minimization QC validated
+- focus-residue analysis validated
+- contact enrichment validated
+- interaction landscape validated
+- ligand strain analysis validated
+- master design table validated
+- full minimize-to-master regression completed
+
+Packaging:
+- editable Python package installed successfully
+- dock-init available
+- dock-minimize available
+- dock-qc available
+- dock-enrich available
+- dock-landscape available
+- dock-strain available
+- dock-master available
+- historical ~/bin wrappers archived
+- pytest regression suite passed
+
+Status:
+Release candidate for v0.1.0.

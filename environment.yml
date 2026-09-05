@@ -1,0 +1,33 @@
+name: dock-postprocess
+
+channels:
+  - conda-forge
+
+dependencies:
+  - python=3.11
+  - pip
+
+  - numpy
+  - scipy
+  - pandas
+  - scikit-learn
+  - matplotlib
+
+  - rdkit
+  - openmm
+  - pdbfixer
+  - openff-toolkit
+  - openmmforcefields
+  - ambertools
+
+  - mdanalysis
+  - mdtraj
+  - parmed
+  - pymbar
+  - alchemlyb
+
+  - biopython
+  - networkx
+  - tqdm
+
+  - pytest

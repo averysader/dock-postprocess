@@ -1,0 +1,15 @@
+{
+  "forcefield_xmls": [
+    "amber14/protein.ff14SB.xml",
+    "amber14/tip3p.xml"
+  ],
+
+  "backbone_restraint_schedule_kcal_mol_A2": [
+    100.0,
+    10.0,
+    1.0
+  ],
+
+  "residue_variants": [],
+  "metal_restraints": []
+}
