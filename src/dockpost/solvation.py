@@ -231,13 +231,8 @@ def solvate_modeller(
 
     if config.mode == "none":
 
-        # This is harmless for ordinary protein/ligand systems and makes
-        # topology preparation robust if a force field requires extra
-        # particles for any residues already present.
-        modeller.addExtraParticles(
-            forcefield
-        )
-
+        # Preserve the v0.1.0 dry topology exactly.  In particular, do not
+        # introduce ligand virtual sites during the legacy NoCutoff path.
         return modeller
 
     modeller.addSolvent(
@@ -267,13 +262,9 @@ def solvate_modeller(
         ),
     )
 
-    # Ensure virtual sites / extra particles correspond to the actual
-    # selected force-field XML rather than relying solely on the
-    # topology-building solvent model used by addSolvent().
-    modeller.addExtraParticles(
-        forcefield
-    )
-
+    # addSolvent() constructs the water topology, including the extra site
+    # required by four-site models.  Avoid a second global addExtraParticles()
+    # pass so ligand atom indexing remains identical to the input molecule.
     return modeller
 
 
