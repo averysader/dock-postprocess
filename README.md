@@ -61,12 +61,6 @@ conda activate dock-postprocess
 python -m pip install -e . --no-deps
 ~~~
 
-For development inside an existing compatible environment:
-
-~~~bash
-python -m pip install -e . --no-deps
-~~~
-
 ## Updating from an earlier version
 
 If `dock-postprocess` is already installed from a previous release:
@@ -79,6 +73,15 @@ git pull origin main
 conda activate dock-postprocess
 
 python -m pip install -e . --no-deps
+~~~
+
+# Do a quick version check:
+
+~~~bash
+python - <<'PY'
+import dockpost
+print(dockpost.__version__)
+PY
 ~~~
 
 ## 1. Initialize a workspace
