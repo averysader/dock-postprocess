@@ -67,6 +67,20 @@ For development inside an existing compatible environment:
 python -m pip install -e . --no-deps
 ~~~
 
+## Updating from an earlier version
+
+If `dock-postprocess` is already installed from a previous release:
+
+~~~bash
+cd dock-postprocess
+
+git pull origin main
+
+conda activate dock-postprocess
+
+python -m pip install -e . --no-deps
+~~~
+
 ## 1. Initialize a workspace
 
 Start with a directory containing:
