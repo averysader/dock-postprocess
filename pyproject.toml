@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "dock-postprocess"
-version = "0.1.0"
+version = "0.2.0.dev0"
 description = "Open-source structure-based docking postprocessing, minimization, interaction analysis, and ligand strain analysis."
 readme = "README.md"
 requires-python = ">=3.11"
