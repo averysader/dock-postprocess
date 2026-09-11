@@ -75,7 +75,7 @@ conda activate dock-postprocess
 python -m pip install -e . --no-deps
 ~~~
 
-# Do a quick version check:
+### Do a quick version check:
 
 ~~~bash
 python - <<'PY'
