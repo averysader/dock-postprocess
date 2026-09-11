@@ -2,8 +2,8 @@
 
 `dock-postprocess` is an open-source structure-based drug design toolkit for
 standardizing docking results and carrying them through restrained OpenMM
-minimization, pose QC, protein-ligand interaction analysis, ligand
-conformational strain analysis, and integrated design prioritization.
+minimization, molecular dynamics, pose QC, protein-ligand interaction analysis,
+ligand conformational strain analysis, and integrated design prioritization.
 
 The workflow is designed for practical docking postprocessing where preserving
 the docked binding geometry is important.
@@ -21,16 +21,16 @@ raw receptor + docking poses
       standardized workspace
             |
        dock-minimize
-            |
-          dock-qc
-            |
-        dock-enrich
-            |
-      dock-landscape
-            |
-         dock-strain
-            |
-         dock-master
+        /        \
+   dock-md      dock-qc
+                 |
+             dock-enrich
+                 |
+           dock-landscape
+                 |
+             dock-strain
+                 |
+             dock-master
 ~~~
 
 ## Main commands
@@ -38,6 +38,7 @@ raw receptor + docking poses
 ~~~text
 dock-init
 dock-minimize
+dock-md
 dock-qc
 dock-enrich
 dock-landscape
@@ -185,83 +186,124 @@ identity independently.
 
 ## 2. Minimize docked complexes
 
-For an ordinary standard-protein receptor:
+For an ordinary standard-protein receptor, the v0.1.0 dry behavior remains
+the default:
 
 ~~~bash
 dock-minimize \
   --results ./analysis
 ~~~
 
-The generalized minimizer uses:
+Defaults are Amber ff14SB for protein residues, OpenFF 2.3.0 for the ligand,
+Amber TIP3P/ion templates, `NoCutoff`, HBond constraints, and staged receptor
+backbone restraints of 100, 10, and 1 kcal/mol/A².
 
-- Amber ff14SB for protein residues
-- Amber TIP3P/ion templates
-- OpenFF 2.3.0 for ligands
-- OpenMM
-- `NoCutoff`
-- HBond constraints
-- staged receptor-backbone restraints of 100, 10, and 1 kcal/mol/A²
+A specific ligand can be rerun with `--ligand L0027`; the option may be
+repeated for multiple ligands.
 
-Ligand atoms and receptor side chains remain free during minimization.
+### Force-field selection
 
-A specific ligand can be rerun:
-
-~~~bash
-dock-minimize \
-  --results ./analysis \
-  --ligand L0027
-~~~
-
-Multiple ligand IDs may be supplied:
+Protein presets include `ff14SB`, `ff19SB`, `ff15ipq`, `amber14-all`, and
+`amber19-all`. Ligands may use any OpenFF or GAFF force field installed in the
+active environment. Examples:
 
 ~~~bash
 dock-minimize \
   --results ./analysis \
-  --ligand L0027 \
-  --ligand L0041
+  --protein-forcefield ff19SB \
+  --ligand-forcefield openff-2.3.0
 ~~~
-
-The default OpenMM platform selection prefers CUDA when available.
-
-An explicit platform may be selected:
 
 ~~~bash
 dock-minimize \
   --results ./analysis \
-  --platform CUDA \
-  --precision mixed
+  --protein-forcefield ff14SB \
+  --ligand-forcefield gaff-2.11
 ~~~
 
-### Special receptor chemistry
+### Explicit solvent
 
-The program deliberately does not guess unusual protonation states,
-metal-coordination chemistry, or other nonstandard receptor features.
-
-These can be supplied using a receptor configuration:
+Explicit solvent is optional during minimization. When enabled, the system is
+placed in a periodic water/ion box and PME is used. Supported Amber water
+models include TIP3P, TIP3P-FB, TIP4P-Ew, TIP4P-FB, SPC/E, OPC, and OPC3.
 
 ~~~bash
 dock-minimize \
   --results ./analysis \
-  --receptor-config receptor_config.json
+  --ligand L0001 \
+  --protein-forcefield ff19SB \
+  --ligand-forcefield openff-2.3.0 \
+  --solvent explicit \
+  --water-model opc \
+  --padding-nm 1.0 \
+  --ionic-strength 0.15 \
+  --box-shape dodecahedron \
+  --platform CUDA
 ~~~
 
-Example configurations are available under `examples/`.
+The public `complex_minimized.pdb` remains solute-only so existing QC and
+interaction-analysis commands retain their v0.1.0 meaning. Explicit-solvent
+runs additionally write a solvated minimized complex and system metadata under
+`results/L####/solvated/`. The minimizer also writes
+`receptor_minimized.pdb`, which is used as the starting receptor for MD.
 
-A receptor configuration can specify:
+Target-specific residue variants and metal restraints remain controlled by
+`--receptor-config`. Force-field and solvent choices are simulation settings
+and are controlled by the command line.
 
-- receptor force-field XML files
-- nonstandard residue variants
-- topology-loading aliases
-- explicit metal-coordination restraints
-- backbone restraint schedules
+## 3. Molecular dynamics
 
-This allows systems such as zinc-binding proteins to be handled without
-hard-coding target-specific chemistry into the software.
+`dock-md` extends a minimized complex through pre-MD minimization, controlled
+NVT heating, equilibration, and production sampling. It supports NVT and NPT.
+NPT requires an explicit periodic solvent box.
 
-For example, a structural Zn site can use explicit ligand atoms and preserve
-their starting coordination distances during minimization.
+A typical explicit-solvent NPT calculation is:
 
-## 3. Post-minimization QC
+~~~bash
+dock-md \
+  --results ./analysis \
+  --ligand L0001 \
+  --receptor-config ./receptor-config.json \
+  --protein-forcefield ff19SB \
+  --ligand-forcefield openff-2.3.0 \
+  --solvent explicit \
+  --water-model opc \
+  --ensemble npt \
+  --temperature 300 \
+  --pressure 1.0 \
+  --heat-ps 100 \
+  --equilibration-ps 500 \
+  --production-ns 10 \
+  --platform CUDA
+~~~
+
+For an explicit-solvent NPT run, heating is always performed in NVT. The
+Monte Carlo barostat is enabled for equilibration and production. By default,
+protein-backbone positional restraints are 1 kcal/mol/A² during heating and
+equilibration and are released for production. Configured metal-coordination
+restraints remain active.
+
+Dry NVT remains available for specialized or rapid tests:
+
+~~~bash
+dock-md \
+  --results ./analysis \
+  --ligand L0001 \
+  --solvent none \
+  --ensemble nvt \
+  --production-ps 100
+~~~
+
+Production output includes DCD coordinates, CSV state data, a checkpoint,
+serialized OpenMM system, final solvated and solute-only structures, and exact
+MD/force-field/solvation metadata.
+
+Important MD controls include `--temperature`, `--pressure`,
+`--start-temperature`, `--heat-ps`, `--equilibration-ps`, `--production-ps`,
+`--production-ns`, `--timestep-fs`, `--friction`, reporting intervals,
+restraint strengths, random seed, OpenMM platform, and GPU precision.
+
+## 4. Post-minimization QC
 
 ~~~bash
 dock-qc \
@@ -312,7 +354,7 @@ Focus-residue analysis is a geometric diagnostic.
 
 It is not a binding score.
 
-## 4. Enrich protein-ligand contacts
+## 5. Enrich protein-ligand contacts
 
 ~~~bash
 dock-enrich \
@@ -344,7 +386,7 @@ post_minimization_contacts_enriched.csv
 residue_feature_preferences.csv
 ~~~
 
-## 5. Analyze the interaction landscape
+## 6. Analyze the interaction landscape
 
 ~~~bash
 dock-landscape \
@@ -388,7 +430,7 @@ Heat maps and other diagnostic plots are also generated.
 The interaction-hotspot PDB can be loaded into molecular-visualization
 software such as ChimeraX or PyMOL.
 
-## 6. Ligand conformational strain
+## 7. Ligand conformational strain
 
 ~~~bash
 dock-strain \
@@ -431,7 +473,7 @@ free-energy contribution.
 For very large and flexible molecules, particularly PROTACs, substantially
 more conformational sampling may be required than the default.
 
-## 7. Build the master design table
+## 8. Build the master design table
 
 ~~~bash
 dock-master \

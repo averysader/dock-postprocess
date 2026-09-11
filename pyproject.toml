@@ -5,8 +5,8 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "dock-postprocess"
-version = "0.1.0"
-description = "Open-source structure-based docking postprocessing, minimization, interaction analysis, and ligand strain analysis."
+version = "0.2.0"
+description = "Open-source structure-based docking postprocessing, minimization, molecular dynamics, interaction analysis, and ligand strain analysis."
 readme = "README.md"
 requires-python = ">=3.11"
 authors = [
@@ -34,6 +34,7 @@ classifiers = [
 [project.scripts]
 dock-init = "dockpost.init:main"
 dock-minimize = "dockpost.minimize:main"
+dock-md = "dockpost.md:main"
 dock-qc = "dockpost.qc:main"
 dock-enrich = "dockpost.enrich:main"
 dock-landscape = "dockpost.landscape:main"

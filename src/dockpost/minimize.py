@@ -70,14 +70,8 @@ from openmm import (
 from openmm.app import (
     PDBFile,
     Modeller,
-    ForceField,
     Simulation,
-    NoCutoff,
     HBonds,
-)
-
-from openmmforcefields.generators import (
-    SMIRNOFFTemplateGenerator,
 )
 
 
@@ -94,6 +88,19 @@ sys.path.insert(
 
 from dockpost.workspace import Workspace  # noqa: E402
 
+from dockpost.forcefields import (  # noqa: E402
+    create_forcefield,
+    describe_forcefield_selection,
+)
+
+from dockpost.solvation import (  # noqa: E402
+    describe_solvation,
+    make_solvation_config,
+    solvate_modeller,
+    system_creation_kwargs,
+    write_solvation_metadata,
+)
+
 from dockpost.receptor_config import (  # noqa: E402
     AtomReference,
     MetalRestraint,
@@ -105,9 +112,6 @@ from dockpost.receptor_config import (  # noqa: E402
 )
 
 
-OPENFF_FF = (
-    "openff-2.3.0"
-)
 
 BACKBONE_ATOMS = {
     "N",
@@ -1206,6 +1210,16 @@ def minimize_ligand(
     platform_name: str,
     precision: str,
     max_iterations: int,
+    protein_forcefield: str,
+    ligand_forcefield: str,
+    water_model: str,
+    solvent_mode: str,
+    padding_nm: float,
+    ionic_strength_molar: float,
+    positive_ion: str,
+    negative_ion: str,
+    box_shape: str,
+    nonbonded_cutoff_nm: float,
 ):
 
     print()
@@ -1266,19 +1280,25 @@ def minimize_ligand(
     # FORCE FIELD
     # --------------------------------------------------------
 
-    forcefield = ForceField(
-        *config.forcefield_xmls
+    (
+        forcefield,
+        ff_selection,
+        _ligand_generator,
+    ) = create_forcefield(
+        offmol=offmol,
+        protein_forcefield=protein_forcefield,
+        ligand_forcefield=ligand_forcefield,
+        water_model=water_model,
     )
 
-
-    smirnoff = SMIRNOFFTemplateGenerator(
-        molecules=offmol,
-        forcefield=OPENFF_FF,
-    )
-
-
-    forcefield.registerTemplateGenerator(
-        smirnoff.generator
+    solvation = make_solvation_config(
+        mode=solvent_mode,
+        padding_nm=padding_nm,
+        ionic_strength_molar=ionic_strength_molar,
+        positive_ion=positive_ion,
+        negative_ion=negative_ion,
+        box_shape=box_shape,
+        nonbonded_cutoff_nm=nonbonded_cutoff_nm,
     )
 
 
@@ -1295,14 +1315,24 @@ def minimize_ligand(
         offmol,
     )
 
+    # Keep a solute-only topology so the public minimized complex remains
+    # compatible with the v0.1.0 QC/analysis workflow even when bulk
+    # solvent is requested.
+    solute_modeller = Modeller(
+        modeller.topology,
+        modeller.positions,
+    )
+    solute_atom_count = sum(1 for _ in solute_modeller.topology.atoms())
 
-    topology = (
-        modeller.topology
+    solvate_modeller(
+        modeller=modeller,
+        forcefield=forcefield,
+        selection=ff_selection,
+        config=solvation,
     )
 
-    positions = (
-        modeller.positions
-    )
+    topology = modeller.topology
+    positions = modeller.positions
 
 
     if (
@@ -1325,10 +1355,14 @@ def minimize_ligand(
     )
 
 
+    creation_kwargs = system_creation_kwargs(
+        solvation
+    )
+
     system = forcefield.createSystem(
         topology,
-        nonbondedMethod=NoCutoff,
         constraints=HBonds,
+        **creation_kwargs,
     )
 
 
@@ -1606,28 +1640,46 @@ def minimize_ligand(
     )
 
 
-    complex_pdb = (
-        result_dir
-        / "complex_minimized.pdb"
-    )
+    complex_pdb = result_dir / "complex_minimized.pdb"
+    receptor_pdb_out = result_dir / "receptor_minimized.pdb"
+    ligand_sdf = result_dir / "ligand_minimized.sdf"
 
+    final_solute_positions = final_positions[:solute_atom_count]
+    final_receptor_positions = final_positions[:receptor_atom_count]
 
-    ligand_sdf = (
-        result_dir
-        / "ligand_minimized.sdf"
-    )
-
-
-    with open(
-        complex_pdb,
-        "w",
-    ) as handle:
-
+    with open(complex_pdb, "w") as handle:
         PDBFile.writeFile(
-            topology,
-            final_positions,
+            solute_modeller.topology,
+            final_solute_positions,
             handle,
             keepIds=True,
+        )
+
+    with open(receptor_pdb_out, "w") as handle:
+        PDBFile.writeFile(
+            receptor_pdb.topology,
+            final_receptor_positions,
+            handle,
+            keepIds=True,
+        )
+
+    solvated_pdb = None
+    if solvation.mode == "explicit":
+        solvated_dir = result_dir / "solvated"
+        solvated_dir.mkdir(parents=True, exist_ok=True)
+        solvated_pdb = solvated_dir / "complex_minimized_solvated.pdb"
+        with open(solvated_pdb, "w") as handle:
+            PDBFile.writeFile(
+                topology,
+                final_positions,
+                handle,
+                keepIds=True,
+            )
+        write_solvation_metadata(
+            solvated_dir / "system_metadata.json",
+            selection=ff_selection,
+            config=solvation,
+            topology=topology,
         )
 
 
@@ -1714,6 +1766,9 @@ def minimize_ligand(
     print(
         f"  Wrote ligand:  {ligand_sdf}"
     )
+    print(f"  Wrote receptor: {receptor_pdb_out}")
+    if solvated_pdb is not None:
+        print(f"  Wrote solvated: {solvated_pdb}")
 
 
     # --------------------------------------------------------
@@ -1752,10 +1807,16 @@ def minimize_ligand(
                 ligand_sdf
             ),
 
-        "complex_pdb":
-            str(
-                complex_pdb
-            ),
+        "complex_pdb": str(complex_pdb),
+        "receptor_minimized_pdb": str(receptor_pdb_out),
+        "solvated_complex_pdb": (str(solvated_pdb) if solvated_pdb else None),
+        "protein_forcefield": ff_selection.protein.name,
+        "ligand_forcefield": ff_selection.ligand.name,
+        "water_model": ff_selection.water.name,
+        "solvent_mode": solvation.mode,
+        "padding_nm": solvation.padding_nm if solvation.mode == "explicit" else None,
+        "ionic_strength_molar": solvation.ionic_strength_molar if solvation.mode == "explicit" else None,
+        "box_shape": solvation.box_shape if solvation.mode == "explicit" else None,
 
         "ligand_atoms":
             ligand_atom_count,
@@ -1970,6 +2031,16 @@ def minimize_workspace(
     platform_name: str = "auto",
     precision: str = "mixed",
     max_iterations: int = DEFAULT_MAX_ITERATIONS,
+    protein_forcefield: str = "ff14SB",
+    ligand_forcefield: str = "openff-2.3.0",
+    water_model: str = "tip3p",
+    solvent_mode: str = "none",
+    padding_nm: float = 1.0,
+    ionic_strength_molar: float = 0.15,
+    positive_ion: str = "Na+",
+    negative_ion: str = "Cl-",
+    box_shape: str = "dodecahedron",
+    nonbonded_cutoff_nm: float = 1.0,
     dry_run: bool = False,
 ):
 
@@ -2055,6 +2126,25 @@ def minimize_workspace(
         config
     )
 
+    # Resolve and display the simulation settings once.  Ligand-specific
+    # template registration occurs later for each molecule.
+    from dockpost.forcefields import resolve_forcefield_selection
+    ff_preview = resolve_forcefield_selection(
+        protein_forcefield=protein_forcefield,
+        ligand_forcefield=ligand_forcefield,
+        water_model=water_model,
+    )
+    solv_preview = make_solvation_config(
+        mode=solvent_mode,
+        padding_nm=padding_nm,
+        ionic_strength_molar=ionic_strength_molar,
+        positive_ion=positive_ion,
+        negative_ion=negative_ion,
+        box_shape=box_shape,
+        nonbonded_cutoff_nm=nonbonded_cutoff_nm,
+    )
+    describe_forcefield_selection(ff_preview)
+    describe_solvation(ff_preview, solv_preview)
 
     if dry_run:
 
@@ -2148,6 +2238,16 @@ def minimize_workspace(
                 platform_name=platform_name,
                 precision=precision,
                 max_iterations=max_iterations,
+                protein_forcefield=protein_forcefield,
+                ligand_forcefield=ligand_forcefield,
+                water_model=water_model,
+                solvent_mode=solvent_mode,
+                padding_nm=padding_nm,
+                ionic_strength_molar=ionic_strength_molar,
+                positive_ion=positive_ion,
+                negative_ion=negative_ion,
+                box_shape=box_shape,
+                nonbonded_cutoff_nm=nonbonded_cutoff_nm,
             )
 
 
@@ -2370,6 +2470,17 @@ def main():
     )
 
 
+    parser.add_argument("--protein-forcefield", default="ff14SB", help="Protein force-field preset. Default: ff14SB.")
+    parser.add_argument("--ligand-forcefield", default="openff-2.3.0", help="Installed OpenFF or GAFF force field. Default: openff-2.3.0.")
+    parser.add_argument("--solvent", choices=["none", "explicit"], default="none", help="Bulk-solvent mode. Default: none.")
+    parser.add_argument("--water-model", default="tip3p", help="Water/ion parameter model. Default: tip3p.")
+    parser.add_argument("--padding-nm", type=float, default=1.0, help="Explicit-solvent padding in nm. Default: 1.0.")
+    parser.add_argument("--ionic-strength", type=float, default=0.15, help="Salt concentration in mol/L for explicit solvent. Default: 0.15.")
+    parser.add_argument("--positive-ion", default="Na+", help="Positive ion for explicit solvent. Default: Na+.")
+    parser.add_argument("--negative-ion", default="Cl-", help="Negative ion for explicit solvent. Default: Cl-.")
+    parser.add_argument("--box-shape", choices=["cube", "dodecahedron", "octahedron"], default="dodecahedron", help="Periodic box shape. Default: dodecahedron.")
+    parser.add_argument("--nonbonded-cutoff-nm", type=float, default=1.0, help="PME real-space cutoff in nm. Default: 1.0.")
+
     parser.add_argument(
         "--dry-run",
         action="store_true",
@@ -2411,6 +2522,16 @@ def main():
         platform_name=args.platform,
         precision=args.precision,
         max_iterations=args.max_iterations,
+        protein_forcefield=args.protein_forcefield,
+        ligand_forcefield=args.ligand_forcefield,
+        water_model=args.water_model,
+        solvent_mode=args.solvent,
+        padding_nm=args.padding_nm,
+        ionic_strength_molar=args.ionic_strength,
+        positive_ion=args.positive_ion,
+        negative_ion=args.negative_ion,
+        box_shape=args.box_shape,
+        nonbonded_cutoff_nm=args.nonbonded_cutoff_nm,
         dry_run=args.dry_run,
     )
 

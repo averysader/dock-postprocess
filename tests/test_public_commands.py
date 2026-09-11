@@ -4,6 +4,7 @@ import importlib
 PUBLIC_MODULES = [
     "dockpost.init",
     "dockpost.minimize",
+    "dockpost.md",
     "dockpost.qc",
     "dockpost.enrich",
     "dockpost.landscape",
